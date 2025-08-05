@@ -38,11 +38,19 @@ def translate_title(search: str):
 def translate_titles(titles):
     logger.debug("Перевод тайтлов из списка с английского на русский")
     result = []
-    for eng_title in titles:
+    for item in titles:
+        eng_title = item["eng_title"]
+        score = item["score"]
+
         if eng_title:
             rus_title = translate_title(eng_title)
             logger.debug(f"Перевод тайтла: {rus_title}")
         else:
-            return None
-        result.append({"russian": rus_title})
+            rus_title = None
+
+        result.append({
+            "Название тайтла": rus_title,
+            "Средняя Оценка": score
+        })
+
     return result

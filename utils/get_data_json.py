@@ -6,5 +6,6 @@ def get_title(data):
     result = []
     for anime in data["data"]["Page"]["media"]:
         eng_title = anime["title"].get("english")
-        result.append(eng_title)
+        score= anime.get("averageScore")
+        result.append({"eng_title": eng_title, "score": score})
     return result
