@@ -1,22 +1,31 @@
 import os
 
 import requests
-from loguru import logger
-
 from dotenv import load_dotenv
+from loguru import logger
 
 load_dotenv()
 
 
-def translate_title(search: str):
+def translate_title(search: str) -> str:
+    """
+    Переводит английский тайтл на русский через API Shikimori.
+
+    Args:
+        search: английское название аниме.
+
+    Returns:
+        Русское название или None при ошибке.
+    """
     query = {
-        "query": f"""
-        {{
-            animes(search: "{search}", limit: 1, kind: "!special") {{
+        "query": """
+        query ($search: String!) {
+            animes(search: $search, limit: 1, kind: "!special") {
                 russian
-            }}
-        }}
-"""
+            }
+        }
+        """,
+        "variables": {"search": search},
     }
 
     headers = {
@@ -35,7 +44,16 @@ def translate_title(search: str):
     return rus_titles[0]["russian"]
 
 
-def translate_titles(titles):
+def translate_titles(titles) -> list[dict]:
+    """
+    Переводит список тайтлов с английского на русский, сохраняя оценки.
+
+    Args:
+        titles (list[dict]): Список словарей с ключами 'eng_title' и 'score'.
+
+    Returns:
+        list[dict]: Список словарей с ключами 'russian_title' и 'average_score'.
+    """
     logger.debug("Перевод тайтлов из списка с английского на русский")
     result = []
     for item in titles:
@@ -48,9 +66,6 @@ def translate_titles(titles):
         else:
             rus_title = None
 
-        result.append({
-            "Название тайтла": rus_title,
-            "Средняя Оценка": score
-        })
+        result.append({"russian_anime_title": rus_title, "average_score_anime": score})
 
     return result
