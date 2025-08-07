@@ -1,12 +1,25 @@
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+# Инициализировать логирование
+import utils.loguru_config  # noqa: F401
 
 from schemas.anime_response import Anime
-from services.fetch_anime_service import search_current_anime, search_popular_anime
+from services.fetch_anime_service import search_anime, search_popular_anime
 
-app = FastAPI()
+app = FastAPI(title="AnimeAPI", description="Поиск и получение информации об аниме", version="1.0.0")
+
+# CORS (при необходимости настройте origins)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.get("/")
+@app.get("/", tags=["health"])
 async def read_root():
     return {"hello": "world"}
 
@@ -16,25 +29,27 @@ async def read_root():
     response_model=list[Anime],
     summary="Получение популярных аниме",
     description="Возвращает информацию об популярных аниме.",
+    tags=["anime"],
 )
-def get_anime_popular(
-    page: int = Query(1, description="Номер страницы пагинации"),
-    per_page: int = Query(5, description="Количество выводимых популярных тайтлов"),
+async def get_anime_popular(
+    page: int = Query(1, ge=1, description="Номер страницы пагинации"),
+    per_page: int = Query(5, ge=1, le=25, description="Количество выводимых популярных тайтлов"),
 ):
-    search_result = search_popular_anime(page, per_page)
+    search_result = await search_popular_anime(page, per_page)
     return search_result
 
 
 @app.get(
-    "/anime/",
+    "/anime",
     response_model=list[Anime],
     summary="Получение конкретного аниме и его сиквелов",
     description="Возвращает информацию о аниме.",
+    tags=["anime"],
 )
-def get_anime(
-    page: int = Query(1, description="Номер страницы пагинации"),
-    per_page: int = Query(5, description="Количество выводимых тайтлов"),
-    search: str = Query(None, description="Строка поиска по названию аниме"),
+async def get_anime(
+    page: int = Query(1, ge=1, description="Номер страницы пагинации"),
+    per_page: int = Query(5, ge=1, le=25, description="Количество выводимых тайтлов"),
+    search: str | None = Query(None, description="Строка поиска по названию аниме"),
 ):
-    search_result = search_current_anime(page, per_page, search)
+    search_result = await search_anime(page, per_page, search)
     return search_result
