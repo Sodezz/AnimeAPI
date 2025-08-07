@@ -5,7 +5,10 @@ Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
+GET http://127.0.0.1:8000/anime/popular?page=1&per_page=3
 Accept: application/json
 
 ###
+
+GET http://127.0.0.1:8000/anime?search=Naruto&page=1&per_page=2
+Accept: application/json

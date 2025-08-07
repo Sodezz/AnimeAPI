@@ -38,7 +38,7 @@ uvicorn main:app --reload
 
 ```ini
 USERAGENT=твой-user-agent
-AUTHSHIKIMORI=твой-токен-Shikimori
+AUTHSHIKIMORI=твой-токен-Shikimori  # передаётся как Bearer
 ```
 
 ---
@@ -79,7 +79,7 @@ GET /anime/popular?page=1&per_page=3
 Запрос:
 
 ```bash
-GET /anime/?search=Naruto&page=1&per_page=2
+GET /anime?search=Naruto&page=1&per_page=2
 ```
 
 Ответ:
@@ -98,15 +98,16 @@ GET /anime/?search=Naruto&page=1&per_page=2
 
 ```
 
-
 ---
 
 # Функции
 
-- Поиск аниме по английскому названию с переводом на русский
+- Поиск аниме по названию с переводом на русский
 
 - Вывод среднего балла (averageScore)
 
 - Пагинация (page, per_page)
 
 - Типизация Pydantic и OpenAPI документация Swagger UI
+
+- Асинхронные запросы к внешним API, таймауты, простое кэширование переводов
