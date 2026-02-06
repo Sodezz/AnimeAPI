@@ -11,10 +11,12 @@ def get_title(data: dict) -> list[dict]:
     Returns:
         list[dict]: Список словарей с ключами 'eng_title' и 'score'.
     """
-    logger.debug("Получение название тайтла")
-    result = []
-    for anime in data["data"]["Page"]["media"]:
-        eng_title = anime["title"].get("english")
+    logger.debug("Получение названий тайтлов из ответа AniList")
+    result: list[dict] = []
+    media_items = data.get("data", {}).get("Page", {}).get("media", [])
+    for anime in media_items:
+        title = anime.get("title") or {}
+        eng_title = title.get("english")
         score = anime.get("averageScore")
         result.append({"eng_title": eng_title, "score": score})
     return result
