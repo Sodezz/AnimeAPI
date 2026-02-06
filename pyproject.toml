@@ -25,6 +25,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-ra --durations=5"
 
 [tool.setuptools.packages.find]
 where = ["."]
