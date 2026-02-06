@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import requests
@@ -6,8 +8,32 @@ from loguru import logger
 
 load_dotenv()
 
+SHIKIMORI_URL = "https://shikimori.one/api/graphql"
+SHIKIMORI_TIMEOUT_SECONDS = 15
 
-def translate_title(search: str) -> str:
+
+def _post_shikimori(query: dict) -> dict:
+    headers = {
+        "Content-Type": "application/json",
+    }
+    user_agent = os.getenv("USERAGENT")
+    authorization = os.getenv("AUTHSHIKIMORI")
+    if user_agent:
+        headers["User-Agent"] = user_agent
+    if authorization:
+        headers["Authorization"] = authorization
+
+    response = requests.post(
+        SHIKIMORI_URL,
+        json=query,
+        headers=headers,
+        timeout=SHIKIMORI_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def translate_title(search: str) -> str | None:
     """
     Переводит английский тайтл на русский через API Shikimori.
 
@@ -28,23 +54,15 @@ def translate_title(search: str) -> str:
         "variables": {"search": search},
     }
 
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": os.getenv("USERAGENT"),
-        "Authorization": os.getenv("AUTHSHIKIMORI"),
-    }
-
-    response = requests.post(
-        "https://shikimori.one/api/graphql", json=query, headers=headers
-    )
-
-    data = response.json()
-    rus_titles = data.get("data").get("animes")
-
-    return rus_titles[0]["russian"]
+    data = _post_shikimori(query)
+    rus_titles = data.get("data", {}).get("animes") or []
+    if not rus_titles:
+        logger.warning("Не найден русский тайтл для запроса: %s", search)
+        return None
+    return rus_titles[0].get("russian")
 
 
-def translate_titles(titles) -> list[dict]:
+def translate_titles(titles: list[dict]) -> list[dict]:
     """
     Переводит список тайтлов с английского на русский, сохраняя оценки.
 
@@ -55,10 +73,10 @@ def translate_titles(titles) -> list[dict]:
         list[dict]: Список словарей с ключами 'russian_title' и 'average_score'.
     """
     logger.debug("Перевод тайтлов из списка с английского на русский")
-    result = []
+    result: list[dict] = []
     for item in titles:
-        eng_title = item["eng_title"]
-        score = item["score"]
+        eng_title = item.get("eng_title")
+        score = item.get("score")
 
         if eng_title:
             rus_title = translate_title(eng_title)
