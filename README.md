@@ -1,112 +1,64 @@
-**AnimeAPI** — API для поиска и получения информации об аниме с переводом на русский язык и средней оценкой.
+# AnimeAPI
 
----
+Production-ready FastAPI service for anime discovery with Russian title enrichment from external providers.
 
-# Описание проекта
+## Features
 
-AnimeAPI предоставляет **возможности**:
+- Async API with typed responses and validated query params
+- Popular anime endpoint and search endpoint
+- AniList integration with retry logic and stable 503 fallback
+- Shikimori title translation with in-memory TTL cache
+- Environment-driven config via `.env`
+- Dockerized one-command startup
+- Unit tests for service layer
 
-- Поиска аниме по названию (английский → русский перевод)
+## Tech Stack
 
-- Получения списка популярных аниме
+- Python 3.11
+- FastAPI
+- HTTPX
+- Pydantic v2 + pydantic-settings
+- Pytest
+- Docker + Docker Compose
 
-- Включает информацию о средней оценке (average score)
-
-- API интегрируется с AniList (для данных о тайтлах) и Shikimori GraphQL API (для перевода).
-
----
-
-# Установка
-
-Выполнить скрипт:
+## Quick Start
 
 ```bash
-git clone https://github.com/Sodezz/AnimeAPI.git
+cp .env.example .env
+docker compose up --build
+```
 
-cd AnimeAPI
+App: `http://localhost:8000`
+Docs: `http://localhost:8000/docs`
 
-python3 -m venv venv
+## Local Run
 
-source venv/bin/activate  # или venv\Scripts\activate на Windows
-
-pip install -r requirements.txt
-
+```bash
+python -m venv .venv
+. .venv/Scripts/activate  # Windows
+pip install -e .[dev]
 uvicorn main:app --reload
 ```
 
-Заполнить файл `.env`:
+## Environment Variables
 
-```ini
-USERAGENT=твой-user-agent
-AUTHSHIKIMORI=твой-токен-Shikimori
-```
+See `.env.example`.
 
----
+- `USER_AGENT` custom user agent for upstream requests
+- `AUTH_SHIKIMORI` optional Shikimori authorization header value
+- `REQUEST_TIMEOUT_SECONDS` request timeout
+- `MAX_RETRIES` upstream retry attempts
+- `TRANSLATION_CACHE_TTL_SECONDS` translation cache TTL
+- `LOG_LEVEL` logging level
 
-# Использование
+## API
 
-## Пример: популярные аниме
+- `GET /` health check
+- `GET /anime/popular?page=1&per_page=10`
+- `GET /anime?page=1&per_page=10&search=Naruto`
 
-Запрос:
-
-```bash
-GET /anime/popular?page=1&per_page=3
-
-```
-
-Ответ:
-
-```json
-[
-  {
-    "russian_title": "Атака титанов",
-    "average_score": 84
-  },
-  {
-    "russian_title": "Клинок, рассекающий демонов",
-    "average_score": 82
-  },
-  {
-    "russian_title": "Тетрадь смерти",
-    "average_score": 84
-  }
-]
-
-```
-
-## Пример: поиск по названию
-
-Запрос:
+## Testing
 
 ```bash
-GET /anime/?search=Naruto&page=1&per_page=2
+pytest -q
 ```
-
-Ответ:
-
-```json
-[
-  {
-    "russian_title": "Наруто",
-    "average_score": 78
-  },
-  {
-    "russian_title": "Наруто: Ураганные хроники",
-    "average_score": 79
-  }
-]
-
-```
-
-
----
-
-# Функции
-
-- Поиск аниме по английскому названию с переводом на русский
-
-- Вывод среднего балла (averageScore)
-
-- Пагинация (page, per_page)
-
-- Типизация Pydantic и OpenAPI документация Swagger UI

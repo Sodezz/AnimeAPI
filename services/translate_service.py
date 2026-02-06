@@ -1,89 +1,74 @@
 from __future__ import annotations
 
-import os
+import time
+from typing import Any
 
-import requests
-from dotenv import load_dotenv
-from loguru import logger
+import httpx
 
-load_dotenv()
+from schemas.anime_response import Anime
+from services.exceptions import ExternalServiceError
+from utils.loguru_config import get_logger
+from utils.settings import Settings
 
-SHIKIMORI_URL = "https://shikimori.one/api/graphql"
-SHIKIMORI_TIMEOUT_SECONDS = 15
+logger = get_logger(__name__)
 
-
-def _post_shikimori(query: dict) -> dict:
-    headers = {
-        "Content-Type": "application/json",
-    }
-    user_agent = os.getenv("USERAGENT")
-    authorization = os.getenv("AUTHSHIKIMORI")
-    if user_agent:
-        headers["User-Agent"] = user_agent
-    if authorization:
-        headers["Authorization"] = authorization
-
-    response = requests.post(
-        SHIKIMORI_URL,
-        json=query,
-        headers=headers,
-        timeout=SHIKIMORI_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    return response.json()
+SHIKIMORI_QUERY = """
+query ($search: String!) {
+  animes(search: $search, limit: 1, kind: "!special") {
+    russian
+  }
+}
+"""
 
 
-def translate_title(search: str) -> str | None:
-    """
-    Переводит английский тайтл на русский через API Shikimori.
+class ShikimoriTranslator:
+    def __init__(self, client: httpx.AsyncClient, settings: Settings) -> None:
+        self._client = client
+        self._settings = settings
+        self._cache: dict[str, tuple[float, str | None]] = {}
 
-    Args:
-        search: английское название аниме.
+    async def enrich_titles(self, titles: list[Anime]) -> list[Anime]:
+        for anime in titles:
+            if anime.english_title:
+                anime.russian_title = await self.translate_title(anime.english_title)
+        return titles
 
-    Returns:
-        Русское название или None при ошибке.
-    """
-    query = {
-        "query": """
-        query ($search: String!) {
-            animes(search: $search, limit: 1, kind: "!special") {
-                russian
-            }
-        }
-        """,
-        "variables": {"search": search},
-    }
+    async def translate_title(self, search: str) -> str | None:
+        cached = self._cache.get(search.lower())
+        if cached and cached[0] > time.monotonic():
+            return cached[1]
 
-    data = _post_shikimori(query)
-    rus_titles = data.get("data", {}).get("animes") or []
-    if not rus_titles:
-        logger.warning("Не найден русский тайтл для запроса: %s", search)
-        return None
-    return rus_titles[0].get("russian")
+        headers = {}
+        if self._settings.auth_shikimori:
+            headers["Authorization"] = self._settings.auth_shikimori
 
+        payload = {"query": SHIKIMORI_QUERY, "variables": {"search": search}}
+        last_error: Exception | None = None
 
-def translate_titles(titles: list[dict]) -> list[dict]:
-    """
-    Переводит список тайтлов с английского на русский, сохраняя оценки.
+        for attempt in range(1, self._settings.max_retries + 1):
+            try:
+                response = await self._client.post(self._settings.shikimori_url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
 
-    Args:
-        titles (list[dict]): Список словарей с ключами 'eng_title' и 'score'.
+                if data.get("errors"):
+                    raise ExternalServiceError(f"Shikimori GraphQL error: {data['errors']}")
 
-    Returns:
-        list[dict]: Список словарей с ключами 'russian_title' и 'average_score'.
-    """
-    logger.debug("Перевод тайтлов из списка с английского на русский")
-    result: list[dict] = []
-    for item in titles:
-        eng_title = item.get("eng_title")
-        score = item.get("score")
+                translated = self._extract_russian_title(data)
+                self._cache[search.lower()] = (
+                    time.monotonic() + self._settings.translation_cache_ttl_seconds,
+                    translated,
+                )
+                return translated
+            except (httpx.HTTPError, ValueError, ExternalServiceError) as error:
+                last_error = error
+                logger.warning("Shikimori request failed on attempt %s: %s", attempt, error)
 
-        if eng_title:
-            rus_title = translate_title(eng_title)
-            logger.debug(f"Перевод тайтла: {rus_title}")
-        else:
-            rus_title = None
+        raise ExternalServiceError("Shikimori is unavailable") from last_error
 
-        result.append({"russian_anime_title": rus_title, "average_score_anime": score})
-
-    return result
+    @staticmethod
+    def _extract_russian_title(data: dict[str, Any]) -> str | None:
+        items = data.get("data", {}).get("animes") or []
+        if not items:
+            return None
+        return items[0].get("russian")

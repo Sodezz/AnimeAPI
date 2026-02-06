@@ -1,11 +1,15 @@
-# Test your FastAPI endpoints
-
+# Health
 GET http://127.0.0.1:8000/
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
+# Popular anime
+GET http://127.0.0.1:8000/anime/popular?page=1&per_page=5
 Accept: application/json
 
 ###
+
+# Search anime
+GET http://127.0.0.1:8000/anime?page=1&per_page=5&search=Naruto
+Accept: application/json

@@ -2,5 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class Anime(BaseModel):
-    russian_anime_title: str = Field(..., examples=["Атака Титанов"], description="Русское название аниме")
-    average_score_anime: int = Field(..., examples=[85], description="Средняя оценка аниме")
+    id: int = Field(..., examples=[16498], description="AniList anime ID")
+    english_title: str | None = Field(None, examples=["Attack on Titan"], description="English title")
+    russian_title: str | None = Field(None, examples=["Атака титанов"], description="Russian localized title")
+    average_score: int | None = Field(None, examples=[84], description="Average AniList score")

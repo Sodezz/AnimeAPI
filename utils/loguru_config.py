@@ -1,26 +1,14 @@
-import sys
+from __future__ import annotations
 
-from loguru import logger
+import logging
 
-logger.remove()
 
-logger.add(
-    sys.stderr,
-    level="WARNING",
-    format="<green>{time}</green> | <level> {level} </level> | <cyan> {name} </cyan>: <cyan> {function} </cyan>: <cyan> {line} </cyan> - <level> {message} </level>",
-    colorize=True,
-)
+def configure_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
 
-logger.add(
-    sys.stdout,
-    level="INFO",
-    format="<green>{time}</green> | <level> {level} </level> | <cyan> {name} </cyan>: <cyan> {function} </cyan>: <cyan> {line} </cyan> - <level> {message} </level>",
-    colorize=True,
-)
 
-logger.add(
-    sys.stdout,
-    level="DEBUG",
-    format="<blue>{time}</blue> | <level> {level} </level> | <cyan> {name} </cyan>: <cyan> {function} </cyan>: <cyan> {line} </cyan> - <level> {message} </level>",
-    colorize=True,
-)
+def get_logger(name: str) -> logging.Logger:
+    return logging.getLogger(name)
